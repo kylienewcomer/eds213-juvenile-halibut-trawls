@@ -1,0 +1,153 @@
+---
+title: "data-cleaning"
+format: html
+---
+
+```{r}
+library(tidyverse)
+library(here)
+library(janitor)
+```
+
+```{r}
+hal <- read_csv(here("data","hal_trawl_fish.csv")) %>% 
+  clean_names()
+
+trawl_info <- read_csv(here("data", "hal_trawl_info.csv"))%>% 
+  clean_names()
+
+other_sp <- read_csv(here("data", "hal_trawl_sp.csv")) %>% 
+  clean_names()
+
+sp_length <- read_csv(here("data", "hal_trawl_sp_length.csv")) %>% 
+  clean_names()
+
+location <- read_csv(here("data", "hal_trawl_loc_meta.csv")) %>% 
+  clean_names()
+
+sp <- read_csv(here("data", "hal_trawl_sp_meta.csv")) %>% 
+  clean_names()
+```
+
+# Correct inconsistent species names
+```{r}
+species_fixed <- other_sp  %>% 
+  # Some of the time target shrimp was recorded in the common_name column - other times it was in the 'other_species' column
+  # Add Target shrimp to common name and remove from other_species
+  mutate(common_name = case_when(other_species == "Target Shrimp" ~ "Target shrimp",
+                                 TRUE ~ common_name),
+         other_species = case_when(other_species == "Target Shrimp" ~ NA,
+                                   TRUE ~ other_species),
+         # Find all fish that were not identified to species
+         # Assign broader taxonomic classification to each
+         # Correct spelling inconsistencies
+         common_name = str_to_sentence(replace_values(common_name,
+                                 c("White croaker?", "White Seabass?", "Unidentified Croaker") ~ "Croaker sp.",
+                                 "Rockfish?" ~ "Rockfish sp.",
+                                 "Topsmelt?" ~ "Silverside sp.",
+                                 "Barred/Spotted Sand Bass?" ~ "Bass sp.",
+                                 "Sea Squirts?" ~ "Sea Squirt",
+                                 c("Hornyhead Turbot?", "Hornyhead turbot/ Curlfin?") ~ "Turbot/Sole sp.",
+                                 "Unidentified Perch" ~ "Surfperch sp.",
+                                 "Snail" ~ "Snails",
+                                 "C-O Sole" ~ "C-O Turbot",
+                                 "Basket weave cusk eel" ~ "Basketweave cusk eel")),
+         # Add or or correct scientific name for newly classified species
+         other_species = case_when(common_name == "Croaker sp." ~ "Sciaenidae sp.",
+                                   common_name == "Rockfish sp." ~ "Sebastes sp.",
+                                   common_name == "Silverside sp." ~ "Atherinopsidae sp.",
+                                   common_name == "Bass sp." ~ "Paralabrax sp.",
+                                   common_name == "Sea Squirt" ~ "Invertebrate",
+                                   common_name == "Turbot/Sole sp." ~ "Pleuronectidae sp.",
+                                   common_name == "Surfperch sp." ~ "Embiotocidae sp.",
+                                   # Identify invert observations as Invertebrate classification
+                                   is.na(other_species) ~ "Invertebrate",
+                                   TRUE ~ other_species),
+         # Move presence/absence note for invertebrates to `notes` column rather than the `count`
+         notes = case_when(other_species == "Invertebrate" ~ "Present",
+                           TRUE ~ notes),
+         # Remove or replace any non-numeric values in `count` column
+         count = as.numeric(case_when(
+           other_species == "Invertebrate" ~ NA,
+           count == "~500" ~ "500",
+           count == "~200" ~ "200",
+           TRUE ~ count))
+         ) %>% 
+  # Update `other_species` column to `scientific_name`
+  rename(scientific_name = other_species) %>% 
+  # Remove spacer rows and unknown species (confirmed with data owner that this should be removed)
+  filter(!is.na(common_name) & !str_detect(common_name, "pusgill"))
+
+# Change inconsistency with spp. vs sp.
+species_fixed$common_name <- str_squish(str_replace(species_fixed$common_name, "spp.", "sp."))
+species_fixed$scientific_name <- str_replace(species_fixed$scientific_name, "spp.", "sp.")
+
+```
+
+
+```{r}
+#sort(unique(species_fixed$common_name))
+```
+
+```{r}
+trawl <- trawl_info %>% 
+  select(-c(location, x27:x31)) %>% 
+  mutate(date = as.Date(date, format = "%m/%d/%y"),
+         halibut_100m2 = as.numeric(halibut_100m2),
+         start_depth = as.numeric(start_depth)) %>% 
+  filter(!is.na(date) & total_trawl_count != "Maturity")
+```
+```{r}
+bad_trawl_id <- trawl_info %>% 
+  filter(total_trawl_count == "Maturity") %>% 
+  select(trawl_id)
+```
+
+
+```{r}
+halibut_bins <- hal %>% 
+  mutate(length_in = halibut_total_length_mm * 0.03937,
+         length_bin = case_when(
+           length_in > 21 ~ ">21",
+           length_in >= 18 ~ "18-21",
+           length_in >= 15 ~ "15-17",
+           length_in >= 12 ~ "12-14",
+           length_in >= 9 ~ "9-11",
+           length_in >= 7 ~ "7-8",
+           length_in >= 5 ~ "5-6",
+           length_in >= 3 ~ "3-4",
+           length_in >= 1 ~ "1-2",
+           TRUE ~ "<1"
+         ),
+         condition_notes = replace_values(condition_notes,
+                                          "Old Net" ~ NA,
+                                          "New Net" ~ NA)) %>% 
+  select(-length_in) %>% 
+  filter(!trawl_id %in% bad_trawl_id$trawl_id & trawl_id != "#N/A")
+
+halibut_bins$condition_notes <- str_replace_all(halibut_bins$condition_notes, "Old Net", "")
+halibut_bins$condition_notes <- str_replace_all(halibut_bins$condition_notes, "New Net", "")
+```
+
+```{r}
+site <- location %>% 
+  filter(location_abbreviation != 'Maturity')
+```
+
+
+```{r}
+write_csv(halibut_bins, here::here("data", "processed", "halibut_clean.csv"))
+```
+
+```{r}
+write_csv(species_fixed, here::here("data", "processed", "species_fixed.csv"))
+```
+
+```{r}
+write_csv(trawl, here::here("data", "processed", "trawl.csv"))
+```
+
+```{r}
+write_csv(site, here::here("data", "processed", "site.csv"))
+```
+

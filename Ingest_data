@@ -1,0 +1,44 @@
+CREATE TABLE Site(
+          location VARCHAR,
+          location_abbreviation VARCHAR);
+
+COPY Site FROM 'data/processed/site.csv' (header TRUE);
+
+
+
+CREATE TABLE Trawl AS
+SELECT * FROM read_csv(
+    'data/processed/trawl.csv',
+    header = true,
+    nullstr = 'NA'
+);
+
+ALTER TABLE Trawl ADD PRIMARY KEY (trawl_id);
+
+SELECT trawl_id, COUNT(*) as n
+FROM Trawl
+GROUP BY trawl_id
+HAVING COUNT(*) > 1
+ORDER BY n DESC;
+
+CREATE TABLE Halibut(
+    trawl_id VARCHAR, FOREIGN KEY (trawl_id) REFERENCES Trawl(trawl_id),
+    halibut_total_length_mm INTEGER,
+    length_bin VARCHAR,
+    tag_number VARCHAR,
+    recap_tag_number_1 VARCHAR,
+    otoliths CHAR,
+    condition_notes VARCHAR,
+    old_new_net CHAR,
+);
+
+COPY Halibut FROM 'data/processed/halibut_clean.csv' (header TRUE );
+
+CREATE TABLE Species(
+    trawl_id VARCHAR, FOREIGN KEY (trawl_id) REFERENCES Trawl(trawl_id),
+    scientific_name VARCHAR,
+    common_name VARCHAR,
+    count INTEGER,
+    notes VARCHAR
+);
+COPY Species FROM 'data/processed/species_fixed.csv' (header TRUE, nullstr 'NA');
