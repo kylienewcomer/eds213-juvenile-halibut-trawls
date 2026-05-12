@@ -1,0 +1,100 @@
+---
+title: "Querying with dbplyr"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(DBI)
+library(dbplyr)
+library(duckdb)
+
+conn <- DBI::dbConnect(duckdb::duckdb(),
+                       dbdir = "halibut.db")
+
+DBI::dbListTables(conn)
+```
+
+```{r}
+halibut_db <- tbl(conn, "Halibut")
+halibut_db
+```
+
+```{r}
+trawl_db <- tbl(conn, "Trawl")
+trawl_db
+```
+
+```{r}
+site_db <- tbl(conn, "Site")
+site_db
+```
+
+```{r}
+species_db <- tbl(conn, "Species")
+species_db
+```
+```{r}
+halibut_length <- halibut_db %>% 
+  inner_join(trawl_db) %>% 
+  left_join(site_db, by = join_by(loc == location_abbreviation)) %>% 
+  filter(loc != "LH" & loc != "T" & loc != "HB" & loc != "M") %>% 
+  collect()
+```
+
+```{r}
+halibut_length %>% 
+  group_by(location, season) %>% 
+  mutate(avg_length = mean(halibut_total_length_mm)) %>% 
+  mutate(location = reorder(location, avg_length)) %>% 
+  ggplot(aes(halibut_total_length_mm, location)) +
+  geom_boxplot() +
+  theme_light()
+```
+
+
+
+```{r}
+av_hal_catch <- trawl_db %>% 
+  left_join(site_db, by = join_by(loc == location_abbreviation)) %>% 
+  filter(loc != "V") %>% 
+  group_by(location) %>% 
+  summarize(av_hal = mean(halibut_100m2)) %>% 
+  arrange(desc(av_hal)) %>% 
+  collect()
+```
+
+```{r}
+av_hal_catch %>% 
+  arrange(desc(av_hal)) %>% 
+  ggplot(aes(location, av_hal)) +
+  geom_col()
+```
+```{r}
+sp_count <- species_db %>% 
+  inner_join(trawl_db) %>% 
+  left_join(site_db, by = join_by(loc == location_abbreviation)) %>% 
+  filter(loc != "LH" & loc != "T" & loc != "HB" & loc != "M") %>% 
+  collect()
+```
+
+```{r}
+
+
+sp_count %>% 
+  filter(loc != "SO" & loc != "DH" & loc != "V" & season != "Summer") %>%
+  group_by(season, location) %>% 
+  summarize(total_species = mean(length(unique(common_name))),
+            most_south = min(starting_lat)) %>% 
+  ggplot(aes(total_species, location)) +
+  geom_col(aes(fill = season), position = "dodge") +
+  theme_light()
+  
+```
+
+
+```{r}
+DBI::dbDisconnect(conn, shutdown = TRUE)
+```
+
