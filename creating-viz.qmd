@@ -17,40 +17,72 @@ DBI::dbListTables(conn)
 ```
 
 ```{r}
-halibut_db <- tbl(conn, "Halibut")
+halibut_db <- tbl(conn, "Halibut") %>% 
+  collect()
 halibut_db
 ```
 
 ```{r}
-trawl_db <- tbl(conn, "Trawl")
+trawl_db <- tbl(conn, "Trawl") %>% 
+  collect()
 trawl_db
 ```
 
 ```{r}
-site_db <- tbl(conn, "Site")
+site_db <- tbl(conn, "Site") %>% 
+  collect()
 site_db
 ```
 
 ```{r}
-species_db <- tbl(conn, "Species")
-species_db
-```
-```{r}
-halibut_length <- halibut_db %>% 
-  inner_join(trawl_db) %>% 
-  left_join(site_db, by = join_by(loc == location_abbreviation)) %>% 
-  filter(loc != "LH" & loc != "T" & loc != "HB" & loc != "M") %>% 
+species_db <- tbl(conn, "Species") %>% 
   collect()
+species_db
 ```
 
 ```{r}
+sum(unique(trawl_db$trawl_id) %in% unique(halibut_db$trawl_id))
+```
+```{r}
+length(unique(halibut_db$trawl_id))
+```
+
+
+```{r}
+halibut_length <- halibut_db %>% 
+  left_join(trawl_db, by = join_by(trawl_id)) %>% 
+  left_join(site_db, by = join_by(loc == location_abbreviation)) %>% 
+  filter(loc != "LH" & loc != "T" & loc != "HB" & loc != "M")
+```
+
+```{r}
+hal2025 <- halibut_db %>% 
+  filter(year == 2025)
+```
+
+
+```{r}
 halibut_length %>% 
+  filter(season != "Summer" & loc != "SO" & loc != "DH") %>% 
   group_by(location, season) %>% 
   mutate(avg_length = mean(halibut_total_length_mm)) %>% 
   mutate(location = reorder(location, avg_length)) %>% 
-  ggplot(aes(halibut_total_length_mm, location)) +
-  geom_boxplot() +
-  theme_light()
+  ggplot(aes(halibut_total_length_mm, reorder(location, avg_length), fill = season)) +
+  geom_boxplot(color = "white") +
+  scale_fill_manual(values = c("#CC5600", "#9CAF88")) +
+  labs(x = "Halibut length (mm)",
+       y = "",
+       fill = "Season") +
+  theme_light() +
+  theme(panel.background = element_rect(fill = "#2b3c2aff"),
+        plot.background = element_rect(fill = "#2b3c2aff"),
+        legend.background = element_rect(fill = "#2b3c2aff"),
+        panel.grid = element_line(color = "gray"),
+        axis.text = element_text(color = "white", size = 12),
+        text = element_text(color = "white"),
+        axis.title = element_text(size = 14))
+  #facet_wrap(~season, ncol = 1)
+ggsave("halibut_size.png", height = 4.5, width = 8)
 ```
 
 
@@ -58,9 +90,9 @@ halibut_length %>%
 ```{r}
 av_hal_catch <- trawl_db %>% 
   left_join(site_db, by = join_by(loc == location_abbreviation)) %>% 
-  filter(loc != "V") %>% 
+  filter(loc != "V" & loc != "LH" & loc != "T" & loc != "HB" & loc != "M" & loc != "SO" & loc != "DH") %>% 
   group_by(location) %>% 
-  summarize(av_hal = mean(halibut_100m2)) %>% 
+  summarize(av_hal = mean(halibut_100m2, na.rm = TRUE)) %>% 
   arrange(desc(av_hal)) %>% 
   collect()
 ```
@@ -68,12 +100,13 @@ av_hal_catch <- trawl_db %>%
 ```{r}
 av_hal_catch %>% 
   arrange(desc(av_hal)) %>% 
-  ggplot(aes(location, av_hal)) +
-  geom_col()
+  ggplot(aes(av_hal, reorder(location, av_hal))) +
+  geom_col() +
+  theme_light()
 ```
 ```{r}
 sp_count <- species_db %>% 
-  inner_join(trawl_db) %>% 
+  left_join(trawl_db) %>% 
   left_join(site_db, by = join_by(loc == location_abbreviation)) %>% 
   filter(loc != "LH" & loc != "T" & loc != "HB" & loc != "M") %>% 
   collect()
@@ -85,13 +118,26 @@ sp_count <- species_db %>%
 sp_count %>% 
   filter(loc != "SO" & loc != "DH" & loc != "V" & season != "Summer") %>%
   group_by(season, location) %>% 
-  summarize(total_species = mean(length(unique(common_name))),
-            most_south = min(starting_lat)) %>% 
-  ggplot(aes(total_species, location)) +
+  summarize(total_species = mean(length(unique(common_name)),
+            most_south = min(starting_lat))) %>%
+  group_by(location) %>% 
+  summarize(most_south = min(most_south),
+            location = fct_reorder(location, most_south)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = total_species, y = reorder(location, most_south))) +
   geom_col(aes(fill = season), position = "dodge") +
+  scale_fill_manual(values = c("#CC5600", "#84CF82")) +
+  labs(x = "Total observed species") +
   theme_light()
   
 ```
+
+
+```{r}
+hal_2025 <- halibut_length %>% 
+  filter((season == "Fall" & year == 2025))
+```
+
 
 
 ```{r}

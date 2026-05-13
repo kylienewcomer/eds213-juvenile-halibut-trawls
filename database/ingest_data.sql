@@ -42,3 +42,9 @@ CREATE TABLE Species(
     notes VARCHAR
 );
 COPY Species FROM 'data/processed/species_fixed.csv' (header TRUE, nullstr 'NA');
+
+CREATE TABLE Species_list(
+    scientific_name VARCHAR NOT NULL,
+    common_name VARCHAR NOT NULL
+);
+COPY Species_list FROM 'data/processed/species_key.csv' (header TRUE);

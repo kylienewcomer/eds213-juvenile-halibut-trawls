@@ -25,9 +25,8 @@ sp_length <- read_csv(here("data", "hal_trawl_sp_length.csv")) %>%
 location <- read_csv(here("data", "hal_trawl_loc_meta.csv")) %>% 
   clean_names()
 
-sp <- read_csv(here("data", "hal_trawl_sp_meta.csv")) %>% 
-  clean_names()
 ```
+
 
 # Correct inconsistent species names
 ```{r}
@@ -38,34 +37,64 @@ species_fixed <- other_sp  %>%
                                  TRUE ~ common_name),
          other_species = case_when(other_species == "Target Shrimp" ~ NA,
                                    TRUE ~ other_species),
+         other_species = str_replace(other_species, "\\?", ""),
          # Find all fish that were not identified to species
          # Assign broader taxonomic classification to each
          # Correct spelling inconsistencies
          common_name = str_to_sentence(replace_values(common_name,
-                                 c("White croaker?", "White Seabass?", "Unidentified Croaker") ~ "Croaker sp.",
+                                 c("White croaker?", "White Seabass?", "Unidentified Croaker", "Croacker sp.") ~ "Croaker sp.",
                                  "Rockfish?" ~ "Rockfish sp.",
                                  "Topsmelt?" ~ "Silverside sp.",
                                  "Barred/Spotted Sand Bass?" ~ "Bass sp.",
                                  "Sea Squirts?" ~ "Sea Squirt",
-                                 c("Hornyhead Turbot?", "Hornyhead turbot/ Curlfin?") ~ "Turbot/Sole sp.",
+                                 c("Hornyhead Turbot?", "Hornyhead turbot/ Curlfin?", "Turbot/sole Sp.") ~ "Turbot/Sole sp.",
+                                 "Horneyhead Turbot" ~ "Hornyhead turbot",
+                                 "Vermillion Rockfish" ~ "Vermilion rockfish",
                                  "Unidentified Perch" ~ "Surfperch sp.",
                                  "Snail" ~ "Snails",
                                  "C-O Sole" ~ "C-O Turbot",
-                                 "Basket weave cusk eel" ~ "Basketweave cusk eel")),
+                                 "Basket weave cusk eel" ~ "Basketweave cusk eel",
+                                 "Hornshark" ~ "Horn shark",
+                                 "Lizardfish" ~ "California lizardfish",
+                                 "Round Ray" ~ "Round stingray",
+                                 "Larval Queenfish" ~ "Queenfish",
+                                 "Sand dabs" ~ "Sand dab sp.",
+                                 "Pipefish" ~ "Pipefish sp.",
+                                 # not defined species
+                                 "White Anchovy" ~ "Anchovy sp.",
+                                 "Translucent flatfish" ~ "Flatfish sp.",
+                                 "Urchin" ~ "Sea urchin")),
          # Add or or correct scientific name for newly classified species
          other_species = case_when(common_name == "Croaker sp." ~ "Sciaenidae sp.",
                                    common_name == "Rockfish sp." ~ "Sebastes sp.",
                                    common_name == "Silverside sp." ~ "Atherinopsidae sp.",
                                    common_name == "Bass sp." ~ "Paralabrax sp.",
                                    common_name == "Sea Squirt" ~ "Invertebrate",
-                                   common_name == "Turbot/Sole sp." ~ "Pleuronectidae sp.",
+                                   common_name == "Turbot/sole sp." ~ "Pleuronectidae sp.",
                                    common_name == "Surfperch sp." ~ "Embiotocidae sp.",
+                                   common_name == "Sand dab sp." ~ "Citharichthys sp.",
+                                   # Correct scientific names for inconsistently named species
+                                   common_name == "Deep-body anchovy" ~ "Anchoa compressa",
+                                   common_name == "Navanax" ~ "Invertebrate",
+                                   common_name == "Black sea hare" ~ "Invertebrate",
+                                   common_name == "Pacific sand dab" ~ "Citharichthys sordidus",
+                                   common_name == "Topsmelt" ~ "Atherinops affinis",
+                                   common_name == "Clingfish" ~ "Gobiesocidae sp.",
+                                   common_name == "Diamond turbot" ~ "Hypsopsetta guttulata",
+                                   common_name == "Salema" ~ "Haemulon californiensis",
+                                   common_name == "Walleye surfperch" ~ "Hyperprosopon argenteum",
+                                   common_name == "Pipefish sp." ~ "Syngnathus sp.",
+                                   common_name == "Anchovy sp." ~ "Engraulis sp.",
+                                   common_name == "Flatfish sp." ~ "Flatfish sp.",
                                    # Identify invert observations as Invertebrate classification
                                    is.na(other_species) ~ "Invertebrate",
                                    TRUE ~ other_species),
          # Move presence/absence note for invertebrates to `notes` column rather than the `count`
          notes = case_when(other_species == "Invertebrate" ~ "Present",
                            TRUE ~ notes),
+         common_name = case_when(common_name == "Octopus" ~ common_name,
+                                 other_species == "Invertebrate" ~ str_replace(common_name, "s$", ""),
+                                 TRUE ~ common_name),
          # Remove or replace any non-numeric values in `count` column
          count = as.numeric(case_when(
            other_species == "Invertebrate" ~ NA,
@@ -84,9 +113,44 @@ species_fixed$scientific_name <- str_replace(species_fixed$scientific_name, "spp
 
 ```
 
+```{r}
+other_species_names <- species_fixed %>% 
+  distinct(scientific_name, common_name) %>% 
+  arrange(scientific_name)
+```
+```{r}
+length(unique(species_fixed$common_name))
+```
+
+# Correct species in lengths
+```{r}
+other_sp_length <- sp_length %>% 
+  filter(!is.na(species)) %>% 
+  mutate(species = str_to_sentence(
+           replace_values(species, c("White croaker?", "White Seabass?", "White Sea Bass?", "Unidentified Croaker") ~ "Croaker sp.",
+                          "White Sea Bass" ~ "White seabass",
+                          c("Barred Surfperch?", "Perch", "Unidentified perch") ~ "Surfperch sp.",
+                          "Ca Scorpionfish" ~ "California scorpionfish",
+                          "Horney Turbot" ~ "Hornyhead turbot",
+                          "Jack Smelt" ~ "Jacksmelt",
+                          "Top Smelt" ~ "Topsmelt",
+                          "Northern Anchovy?" ~ "Anchovy sp.",
+                          "Pacific pampano" ~ "Pacific pompano",
+                          "Rockfish?" ~ "Rockfish sp.",
+                          "Dwarf Surfperch" ~ "Dwarf Perch",
+                          "Zebra Surfperch?" ~ "Zebraperch"
+    
+  ))
+)
+
+other_sp_length %>% 
+  distinct(species) %>% 
+  arrange(species)
+```
+
 
 ```{r}
-#sort(unique(species_fixed$common_name))
+
 ```
 
 ```{r}
@@ -134,6 +198,9 @@ site <- location %>%
   filter(location_abbreviation != 'Maturity')
 ```
 
+```{r}
+write_csv(other_species_names, here::here("data", "processed", "species_key.csv"))
+```
 
 ```{r}
 write_csv(halibut_bins, here::here("data", "processed", "halibut_clean.csv"))

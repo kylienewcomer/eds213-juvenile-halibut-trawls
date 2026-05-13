@@ -1,9 +1,0 @@
-How does halibut per swept area vary by location and season
-
-SELECT AVG(halibut_total_length_mm), location, season FROM Halibut
-    JOIN Trawl USING (trawl_id)
-    JOIN Site ON loc = location_abbreviation
-    GROUP BY location, season
-    ORDER BY season, AVG(halibut_total_length_mm) DESC;
-
-
