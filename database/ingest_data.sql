@@ -2,13 +2,13 @@ CREATE TABLE Site(
           location VARCHAR,
           location_abbreviation VARCHAR);
 
-COPY Site FROM 'data/processed/site.csv' (header TRUE);
+COPY Site FROM '../data/processed/site.csv' (header TRUE);
 
 
 
 CREATE TABLE Trawl AS
 SELECT * FROM read_csv(
-    'data/processed/trawl.csv',
+    '../data/processed/trawl.csv',
     header = true,
     nullstr = 'NA'
 );
@@ -32,7 +32,7 @@ CREATE TABLE Halibut(
     old_new_net CHAR,
 );
 
-COPY Halibut FROM 'data/processed/halibut_clean.csv' (header TRUE );
+COPY Halibut FROM '../data/processed/halibut_clean.csv' (header TRUE );
 
 CREATE TABLE Species(
     trawl_id VARCHAR, FOREIGN KEY (trawl_id) REFERENCES Trawl(trawl_id),
@@ -41,10 +41,10 @@ CREATE TABLE Species(
     count INTEGER,
     notes VARCHAR
 );
-COPY Species FROM 'data/processed/species_fixed.csv' (header TRUE, nullstr 'NA');
+COPY Species FROM '../data/processed/species_fixed.csv' (header TRUE, nullstr 'NA');
 
 CREATE TABLE Species_list(
     scientific_name VARCHAR NOT NULL,
     common_name VARCHAR NOT NULL
 );
-COPY Species_list FROM 'data/processed/species_key.csv' (header TRUE);
+COPY Species_list FROM '../data/processed/species_key.csv' (header TRUE);
