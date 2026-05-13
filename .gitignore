@@ -49,4 +49,6 @@ po/*~
 rsconnect/
 
 data/
+post-project-tasks/
+
 .DS_Store
