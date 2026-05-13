@@ -1,6 +1,6 @@
 # Juvenile Halibut Research Trawls Database
 
-![](images/Untitled design (16).png)
+![](images/CDFW_Shield.jpg)
 
 ## Purpose
 
@@ -9,3 +9,9 @@ This project utilizes research trawl data collected by the California Department
 ## Data Access
 
 This data is currently not public. Data requests can be sent to CDFW for access to this data by emailing [Miranda.Haggerty\@Wildlife.ca.gov](mailto:Miranda.Haggerty@Wildlife.ca.gov){.email} or submit a data request [here](https://wildlife.ca.gov/General-Counsel/Public-Records-Requests).
+
+
+## Acknowledgements
+This project was completed as part of [EDS 213: Databases and Data Management](https://ucsb-library-research-data-services.github.io/bren-eds213/)
+
+A special thanks to Miranda Haggerty and the Southern California Fisheries Research and Management Program!
