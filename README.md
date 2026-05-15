@@ -26,10 +26,10 @@ A SQL database was created using *DuckDB* in VSCode. Each CSV was ingested as a 
 
 ![](images/tables.png)
 
-A query looking at halibut size across sites and seasons was ran in `query.sql`.
+A query looking at average halibut size across sites and seasons was ran in `query.sql`.
 
 ## Acknowledgements
 
 This project was completed as part of [EDS 213: Databases and Data Management](https://ucsb-library-research-data-services.github.io/bren-eds213/)
 
-A special thanks to Miranda Haggerty and the Southern California Fisheries Research and Management Program!
+A special thanks to Miranda Haggerty and the Southern California Fisheries Research and Management Program for the data access and guidance!
