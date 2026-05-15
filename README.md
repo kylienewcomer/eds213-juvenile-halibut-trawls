@@ -10,6 +10,20 @@ This project builds a SQL database using research trawl data collected by the Ca
 
 This data is currently not public. Data requests can be sent to CDFW for access to this data by emailing [Miranda.Haggerty\@Wildlife.ca.gov](mailto:Miranda.Haggerty@Wildlife.ca.gov) or submit a data request [here](https://wildlife.ca.gov/General-Counsel/Public-Records-Requests).
 
+## Repository structure
+
+├── creating-viz.qmd
+├── data-cleaning.qmd
+├── database
+│   ├── halibut.db
+│   ├── ingest_data.sql
+│   └──query.sql
+├── eds213-juvenile-halibut-trawls.Rproj
+├── figs
+├── images
+├── README.md
+└── requirements.txt
+
 ## Workflow
 
 ### Dependencies
@@ -22,7 +36,7 @@ Data was imported into *RStudio* for cleaning in `data-cleaning.qmd`. All data d
 
 ### Database
 
-A SQL database was created using *DuckDB* in VSCode. Each CSV was ingested as a table in the `halibut.db` database within `ingest_data.sql`. The following tables were created:
+A SQL database was created using *DuckDB* in VSCode. All steps files of data ingestion and querying with DuckDB can be found in the `database` folder. Each clean CSV was ingested as a table in the `halibut.db` database within `ingest_data.sql`. The following tables were created:
 
 ![](images/tables.png)
 
