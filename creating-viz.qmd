@@ -1,9 +1,10 @@
 ---
 title: "Querying with dbplyr"
+author: "Kylie Newcomer"
 format: html
 editor: visual
 ---
-
+## Connect to database
 ```{r}
 library(tidyverse)
 library(DBI)
@@ -11,32 +12,28 @@ library(dbplyr)
 library(duckdb)
 
 conn <- DBI::dbConnect(duckdb::duckdb(),
-                       dbdir = "halibut.db")
+                       dbdir = "database/halibut.db")
 
 DBI::dbListTables(conn)
 ```
 
 ```{r}
-halibut_db <- tbl(conn, "Halibut") %>% 
-  collect()
+halibut_db <- tbl(conn, "Halibut")
 halibut_db
 ```
 
 ```{r}
-trawl_db <- tbl(conn, "Trawl") %>% 
-  collect()
+trawl_db <- tbl(conn, "Trawl")
 trawl_db
 ```
 
 ```{r}
-site_db <- tbl(conn, "Site") %>% 
-  collect()
+site_db <- tbl(conn, "Site")
 site_db
 ```
 
 ```{r}
-species_db <- tbl(conn, "Species") %>% 
-  collect()
+species_db <- tbl(conn, "Species")
 species_db
 ```
 
@@ -52,34 +49,27 @@ length(unique(halibut_db$trawl_id))
 halibut_length <- halibut_db %>% 
   left_join(trawl_db, by = join_by(trawl_id)) %>% 
   left_join(site_db, by = join_by(loc == location_abbreviation)) %>% 
-  filter(loc != "LH" & loc != "T" & loc != "HB" & loc != "M")
-```
-
-```{r}
-hal2025 <- halibut_db %>% 
-  filter(year == 2025)
+  filter(loc != "LH" & loc != "T" & loc != "HB" & loc != "M") %>% 
+  collect()
 ```
 
 
 ```{r}
 halibut_length %>% 
   filter(season != "Summer" & loc != "SO" & loc != "DH") %>% 
-  group_by(location, season) %>% 
-  mutate(avg_length = mean(halibut_total_length_mm)) %>% 
-  mutate(location = reorder(location, avg_length)) %>% 
-  ggplot(aes(halibut_total_length_mm, reorder(location, avg_length), fill = season)) +
-  geom_boxplot(color = "white") +
+  group_by(location.x, season, year) %>% 
+  summarize(avg_length = mean(halibut_total_length_mm)) %>% 
+  #mutate(location = reorder(location.x, avg_length)) %>% 
+  ggplot(aes(avg_length, reorder(location.x, avg_length), fill = season)) +
+  geom_boxplot(color = "black") +
   scale_fill_manual(values = c("#CC5600", "#9CAF88")) +
   labs(x = "Halibut length (mm)",
        y = "",
        fill = "Season") +
   theme_light() +
-  theme(panel.background = element_rect(fill = "#2b3c2aff"),
-        plot.background = element_rect(fill = "#2b3c2aff"),
-        legend.background = element_rect(fill = "#2b3c2aff"),
-        panel.grid = element_line(color = "gray"),
-        axis.text = element_text(color = "white", size = 12),
-        text = element_text(color = "white"),
+  theme(panel.grid = element_line(color = "gray"),
+        axis.text = element_text(color = "gray1", size = 12),
+        #text = element_text(color = "white"),
         axis.title = element_text(size = 14))
   #facet_wrap(~season, ncol = 1)
 ggsave("halibut_size.png", height = 4.5, width = 8)
@@ -131,14 +121,6 @@ sp_count %>%
   theme_light()
   
 ```
-
-
-```{r}
-hal_2025 <- halibut_length %>% 
-  filter((season == "Fall" & year == 2025))
-```
-
-
 
 ```{r}
 DBI::dbDisconnect(conn, shutdown = TRUE)

@@ -34,7 +34,7 @@ location <- read_csv(here("data", "hal_trawl_loc_meta.csv")) %>%
 I started by removing the end columns with no values. I also wanted to convert the date column to a date time data type. There were also two columns that should be numeric but weren't due to inconsistent data entry. I forced those values to NA's to create numeric columns. There were also filler rows and data from another study (Maturity) in the dataset that the data owner requested that I remove.
 ```{r}
 trawl <- trawl_info %>% 
-  select(-c(x27:x31)) %>% 
+  select(-c(location, x27:x31)) %>% 
   mutate(date = as.Date(date, format = "%m/%d/%y"),
          halibut_100m2 = as.numeric(halibut_100m2),
          start_depth = as.numeric(start_depth)) %>% 

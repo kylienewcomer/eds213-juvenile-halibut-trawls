@@ -4,8 +4,6 @@ CREATE TABLE Site(
 
 COPY Site FROM '../data/processed/site.csv' (header TRUE);
 
-
-
 CREATE TABLE Trawl AS
 SELECT * FROM read_csv(
     '../data/processed/trawl.csv',
@@ -15,11 +13,6 @@ SELECT * FROM read_csv(
 
 ALTER TABLE Trawl ADD PRIMARY KEY (trawl_id);
 
-SELECT trawl_id, COUNT(*) as n
-FROM Trawl
-GROUP BY trawl_id
-HAVING COUNT(*) > 1
-ORDER BY n DESC;
 
 CREATE TABLE Halibut(
     trawl_id VARCHAR, FOREIGN KEY (trawl_id) REFERENCES Trawl(trawl_id),
@@ -48,3 +41,4 @@ CREATE TABLE Species_list(
     common_name VARCHAR NOT NULL
 );
 COPY Species_list FROM '../data/processed/species_key.csv' (header TRUE);
+
