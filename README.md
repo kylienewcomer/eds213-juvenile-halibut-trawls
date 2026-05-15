@@ -12,6 +12,7 @@ This data is currently not public. Data requests can be sent to CDFW for access 
 
 ## Repository structure
 
+```
 ├── creating-viz.qmd
 ├── data-cleaning.qmd
 ├── database
@@ -23,6 +24,7 @@ This data is currently not public. Data requests can be sent to CDFW for access 
 ├── images
 ├── README.md
 └── requirements.txt
+```
 
 ## Workflow
 
