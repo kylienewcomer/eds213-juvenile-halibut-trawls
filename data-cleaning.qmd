@@ -1,8 +1,12 @@
 ---
-title: "data-cleaning"
+title: "Data Cleaning"
+author: "Kylie Newcomer"
 format: html
+execute: 
+  message: false
+  warning: false
 ---
-
+# Load necessary packages and data
 ```{r}
 library(tidyverse)
 library(here)
@@ -26,11 +30,28 @@ location <- read_csv(here("data", "hal_trawl_loc_meta.csv")) %>%
   clean_names()
 
 ```
+# Clean trawl information
+I started by removing the end columns with no values. I also wanted to convert the date column to a date time data type. There were also two columns that should be numeric but weren't due to inconsistent data entry. I forced those values to NA's to create numeric columns. There were also filler rows and data from another study (Maturity) in the dataset that the data owner requested that I remove.
+```{r}
+trawl <- trawl_info %>% 
+  select(-c(x27:x31)) %>% 
+  mutate(date = as.Date(date, format = "%m/%d/%y"),
+         halibut_100m2 = as.numeric(halibut_100m2),
+         start_depth = as.numeric(start_depth)) %>% 
+  filter(!is.na(date) & loc != "M" & total_trawl_count != "Maturity")
+```
 
+In order to ensure each trawl ID is unique, I will filter all other data based on `trawl_id` from the cleaned trawl data.
+```{r}
+true_trawl_id <- trawl %>% 
+  select(trawl_id)
+```
 
-# Correct inconsistent species names
+# Clean other species observations
+This data has many observed species, and with that, there was lots of inconsistent naming, spelling errors, and lots of questions marks for unidentified species. I had to manually address all spelling or inconsistent names. I replaced species with question marks to a larger taxonomic classification for both the common name and scientific name. There was also lots of incorrect use of "sp." vs "spp.", so that was corrected at the end.
 ```{r}
 species_fixed <- other_sp  %>% 
+  filter(trawl_id %in% true_trawl_id$trawl_id) %>% 
   # Some of the time target shrimp was recorded in the common_name column - other times it was in the 'other_species' column
   # Add Target shrimp to common name and remove from other_species
   mutate(common_name = case_when(other_species == "Target Shrimp" ~ "Target shrimp",
@@ -113,20 +134,13 @@ species_fixed$scientific_name <- str_replace(species_fixed$scientific_name, "spp
 
 ```
 
-```{r}
-other_species_names <- species_fixed %>% 
-  distinct(scientific_name, common_name) %>% 
-  arrange(scientific_name)
-```
-```{r}
-length(unique(species_fixed$common_name))
-```
-
 # Correct species in lengths
+Same as the species counts, there were naming inconsistencies that I had to correct.
 ```{r}
 other_sp_length <- sp_length %>% 
-  filter(!is.na(species)) %>% 
-  mutate(species = str_to_sentence(
+  # Filter to remove blank rows and maturity trawls
+  filter(!is.na(species) & trawl_id %in% true_trawl_id$trawl_id) %>% 
+  mutate(species = str_to_sentence( # Correct species names
            replace_values(species, c("White croaker?", "White Seabass?", "White Sea Bass?", "Unidentified Croaker") ~ "Croaker sp.",
                           "White Sea Bass" ~ "White seabass",
                           c("Barred Surfperch?", "Perch", "Unidentified perch") ~ "Surfperch sp.",
@@ -142,35 +156,15 @@ other_sp_length <- sp_length %>%
     
   ))
 )
-
-other_sp_length %>% 
-  distinct(species) %>% 
-  arrange(species)
 ```
 
-
-```{r}
-
-```
-
-```{r}
-trawl <- trawl_info %>% 
-  select(-c(location, x27:x31)) %>% 
-  mutate(date = as.Date(date, format = "%m/%d/%y"),
-         halibut_100m2 = as.numeric(halibut_100m2),
-         start_depth = as.numeric(start_depth)) %>% 
-  filter(!is.na(date) & total_trawl_count != "Maturity")
-```
-```{r}
-bad_trawl_id <- trawl_info %>% 
-  filter(total_trawl_count == "Maturity") %>% 
-  select(trawl_id)
-```
-
-
+# Clean Halibut data
+This data did not have too many inconsistencies to address. The main thing was filling in the length bins for the most recent halibut entries. I first converted each length to inches then matched to the correct bin. There was also inconsistent noting of if the old or new net was used, which began in 2024. 
 ```{r}
 halibut_bins <- hal %>% 
+  # Convert length to inches
   mutate(length_in = halibut_total_length_mm * 0.03937,
+         # Assign bins
          length_bin = case_when(
            length_in > 21 ~ ">21",
            length_in >= 18 ~ "18-21",
@@ -183,19 +177,30 @@ halibut_bins <- hal %>%
            length_in >= 1 ~ "1-2",
            TRUE ~ "<1"
          ),
+         # Remove net type from condidition notes
          condition_notes = replace_values(condition_notes,
                                           "Old Net" ~ NA,
-                                          "New Net" ~ NA)) %>% 
+                                          "New Net" ~ NA),
+         # Standardize positive otolith extraction distiction
+         otoliths = replace_values(otoliths,
+                                   "Yes" ~ "Y")) %>% 
+  # Remove length in inches
   select(-length_in) %>% 
-  filter(!trawl_id %in% bad_trawl_id$trawl_id & trawl_id != "#N/A")
+  # Remove maturity trawl halibut and blank rows
+  filter(trawl_id %in% true_trawl_id$trawl_id & trawl_id != "#N/A")
 
-halibut_bins$condition_notes <- str_replace_all(halibut_bins$condition_notes, "Old Net", "")
-halibut_bins$condition_notes <- str_replace_all(halibut_bins$condition_notes, "New Net", "")
 ```
 
+# Clean Site code data
+For the site codes, the only issue was the "Maturity" sites, which were trawl sites only visited to collect maturity data. Those sites were removed.
 ```{r}
 site <- location %>% 
   filter(location_abbreviation != 'Maturity')
+```
+
+# Write clean data to CSVs
+```{r}
+write_csv(other_sp_length, here::here("data", "processed", "other_sp_length.csv"))
 ```
 
 ```{r}
