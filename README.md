@@ -12,7 +12,7 @@ This data is currently not public. Data requests can be sent to CDFW for access 
 
 ## Repository structure
 
-```
+```         
 ├── creating-viz.qmd
 ├── data-cleaning.qmd
 ├── database
@@ -42,7 +42,9 @@ A SQL database was created using *DuckDB* in VSCode. All steps files of data ing
 
 ![](images/tables.png)
 
-A query looking at average halibut size across sites and seasons was ran in `query.sql`.
+A query looking at average halibut size across sites and seasons was ran in `query.sql`. That same query was ran using `dbplyr` in the `creating-viz.qmd` file to create the following figure looking at the distribution of halibut sizes ranked by average length at each site.
+
+![](figs/halibut_size.png)
 
 ## Acknowledgements
 

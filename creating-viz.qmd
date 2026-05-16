@@ -33,19 +33,6 @@ site_db
 ```
 
 ```{r}
-species_db <- tbl(conn, "Species")
-species_db
-```
-
-```{r}
-sum(unique(trawl_db$trawl_id) %in% unique(halibut_db$trawl_id))
-```
-```{r}
-length(unique(halibut_db$trawl_id))
-```
-
-
-```{r}
 halibut_length <- halibut_db %>% 
   left_join(trawl_db, by = join_by(trawl_id)) %>% 
   left_join(site_db, by = join_by(loc == location_abbreviation)) %>% 
@@ -57,70 +44,36 @@ halibut_length <- halibut_db %>%
 ```{r}
 halibut_length %>% 
   filter(season != "Summer" & loc != "SO" & loc != "DH") %>% 
-  group_by(location.x, season, year) %>% 
-  summarize(avg_length = mean(halibut_total_length_mm)) %>% 
+  group_by(location, season) %>% 
+  mutate(avg_length = mean(halibut_total_length_mm)) %>% 
   #mutate(location = reorder(location.x, avg_length)) %>% 
-  ggplot(aes(avg_length, reorder(location.x, avg_length), fill = season)) +
+  ggplot(aes(halibut_total_length_mm, reorder(location, avg_length), fill = season)) +
   geom_boxplot(color = "black") +
   scale_fill_manual(values = c("#CC5600", "#9CAF88")) +
   labs(x = "Halibut length (mm)",
        y = "",
-       fill = "Season") +
+       fill = "Season",
+       title= "On average, larger halibut were caught in the spring",
+       subtitle= "The northern most sites (Santa Barbara and Carpenteria) had the largest\naverage lengths") +
   theme_light() +
   theme(panel.grid = element_line(color = "gray"),
         axis.text = element_text(color = "gray1", size = 12),
         #text = element_text(color = "white"),
         axis.title = element_text(size = 14))
   #facet_wrap(~season, ncol = 1)
-ggsave("halibut_size.png", height = 4.5, width = 8)
-```
-
-
-
-```{r}
-av_hal_catch <- trawl_db %>% 
-  left_join(site_db, by = join_by(loc == location_abbreviation)) %>% 
-  filter(loc != "V" & loc != "LH" & loc != "T" & loc != "HB" & loc != "M" & loc != "SO" & loc != "DH") %>% 
-  group_by(location) %>% 
-  summarize(av_hal = mean(halibut_100m2, na.rm = TRUE)) %>% 
-  arrange(desc(av_hal)) %>% 
-  collect()
-```
-
-```{r}
-av_hal_catch %>% 
-  arrange(desc(av_hal)) %>% 
-  ggplot(aes(av_hal, reorder(location, av_hal))) +
-  geom_col() +
-  theme_light()
+ggsave(here::here("figs", "halibut_size.png"), height = 4.5, width = 8)
 ```
 ```{r}
-sp_count <- species_db %>% 
-  left_join(trawl_db) %>% 
+halibut_db %>% 
+  left_join(trawl_db, by = join_by(trawl_id)) %>% 
   left_join(site_db, by = join_by(loc == location_abbreviation)) %>% 
   filter(loc != "LH" & loc != "T" & loc != "HB" & loc != "M") %>% 
-  collect()
+  filter(season != "Summer" & loc != "SO" & loc != "DH") %>% 
+  group_by(location, season) %>% 
+  mutate(avg_length = mean(halibut_total_length_mm)) %>% 
+  show_query()
 ```
 
-```{r}
-
-
-sp_count %>% 
-  filter(loc != "SO" & loc != "DH" & loc != "V" & season != "Summer") %>%
-  group_by(season, location) %>% 
-  summarize(total_species = mean(length(unique(common_name)),
-            most_south = min(starting_lat))) %>%
-  group_by(location) %>% 
-  summarize(most_south = min(most_south),
-            location = fct_reorder(location, most_south)) %>% 
-  ungroup() %>% 
-  ggplot(aes(x = total_species, y = reorder(location, most_south))) +
-  geom_col(aes(fill = season), position = "dodge") +
-  scale_fill_manual(values = c("#CC5600", "#84CF82")) +
-  labs(x = "Total observed species") +
-  theme_light()
-  
-```
 
 ```{r}
 DBI::dbDisconnect(conn, shutdown = TRUE)
